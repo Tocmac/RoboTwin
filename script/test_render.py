@@ -67,6 +67,7 @@ class Sapien_TEST(gym.Env):
         # give renderer to sapien sim
         self.engine.set_renderer(self.renderer)
 
+        # 注释掉光追
         sapien.render.set_camera_shader_dir("rt")
         sapien.render.set_ray_tracing_samples_per_pixel(32)
         sapien.render.set_ray_tracing_path_depth(8)

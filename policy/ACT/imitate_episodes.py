@@ -415,6 +415,12 @@ def train_bc(train_dataloader, val_dataloader, config):
             ckpt_path = os.path.join(ckpt_dir, f"policy_epoch_{epoch + 1}_seed_{seed}.ckpt")
             torch.save(policy.state_dict(), ckpt_path)
             plot_history(train_history, validation_history, epoch, ckpt_dir, seed)
+        
+        # save best ckpt per 5000
+        if (epoch + 1) % 5000 == 0:
+            best_epoch, min_val_loss, best_state_dict = best_ckpt_info
+            ckpt_path = os.path.join(ckpt_dir, f"policy_best_epoch_{best_epoch}_of_{epoch+1}_seed_{seed}.ckpt")
+            torch.save(best_state_dict, ckpt_path)
 
     ckpt_path = os.path.join(ckpt_dir, f"policy_last.ckpt")
     torch.save(policy.state_dict(), ckpt_path)

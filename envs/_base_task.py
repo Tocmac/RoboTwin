@@ -211,6 +211,7 @@ class Base_Task(gym.Env):
         # give renderer to sapien sim
         self.engine.set_renderer(self.renderer)
 
+        # 关闭光追，默认光栅化
         sapien.render.set_camera_shader_dir("rt")
         sapien.render.set_ray_tracing_samples_per_pixel(32)
         sapien.render.set_ray_tracing_path_depth(8)

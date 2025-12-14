@@ -69,6 +69,7 @@ def main(usr_args):
     # checkpoint_num = usr_args['checkpoint_num']
     policy_name = usr_args["policy_name"]
     instruction_type = usr_args["instruction_type"]
+    ckpt_dir = usr_args["ckpt_dir"]
     save_dir = None
     video_save_dir = None
     video_size = None
@@ -121,7 +122,7 @@ def main(usr_args):
     else:
         embodiment_name = str(embodiment_type[0]) + "+" + str(embodiment_type[1])
 
-    save_dir = Path(f"eval_result/{task_name}/{policy_name}/{task_config}/{ckpt_setting}/{current_time}")
+    save_dir = Path(f"eval_result/{task_name}/{policy_name}/{task_config}/{ckpt_setting}/{current_time}-{ckpt_dir.split('/')[-1]}")
     save_dir.mkdir(parents=True, exist_ok=True)
 
     if args["eval_video_log"]:
@@ -233,14 +234,16 @@ def eval_policy(task_name,
                 args["render_freq"] = render_freq
                 continue
             except Exception as e:
-                # stack_trace = traceback.format_exc()
-                # print(" -------------")
-                # print("Error: ", e)
-                # print(" -------------")
+                stack_trace = traceback.format_exc()
+                print(" -------------")
+                print("Error: ", e)
+                print(stack_trace)
+                print(" -------------")
                 TASK_ENV.close_env()
                 now_seed += 1
                 args["render_freq"] = render_freq
                 print("error occurs !")
+                exit()
                 continue
 
         if (not expert_check) or (TASK_ENV.plan_success and TASK_ENV.check_success()):

@@ -144,7 +144,8 @@ if __name__ == "__main__":
 
     begin = 0
     begin = data_transform(
-        os.path.join("../../data/", task_name, task_config, 'data'),
+        os.path.join("../../data", task_name, task_config, 'data'),
+        # os.path.join("../../data/dataset_ori", task_name, task_config, 'data'),
         expert_data_num,
         f"processed_data/sim-{task_name}/{task_config}-{expert_data_num}",
     )
