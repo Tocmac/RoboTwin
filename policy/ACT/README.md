@@ -64,6 +64,8 @@ bash eval.sh blocks_ranking_rgb demo_clean demo_clean 50 0 0 30000
 bash eval.sh blocks_ranking_rgb demo_randomized demo_clean 50 0 0
 
 bash eval.sh blocks_ranking_rgb aloha_clean_500 aloha_clean_500 200 0 0 20000
+
+bash eval.sh blocks_ranking_rgb aloha_clean_500 aloha_clean_500 200 0 0 30000
 ```
 
 The evaluation results, including videos, will be saved in the eval_result directory under the project root.
