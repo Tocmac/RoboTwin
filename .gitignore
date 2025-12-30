@@ -1,3 +1,6 @@
+*.mp4
+*.pth
+
 pytorch3d/
 envs/curobo/
 
