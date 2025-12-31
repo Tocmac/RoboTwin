@@ -18,6 +18,7 @@ from datetime import datetime
 import importlib
 import argparse
 import pdb
+import h5py
 
 from generate_episode_instructions import *
 
@@ -62,7 +63,7 @@ def get_embodiment_config(robot_file):
 
 
 def main(usr_args):
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    current_time = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
     task_name = usr_args["task_name"]
     task_config = usr_args["task_config"]
     ckpt_setting = usr_args["ckpt_setting"]
@@ -70,6 +71,7 @@ def main(usr_args):
     policy_name = usr_args["policy_name"]
     instruction_type = usr_args["instruction_type"]
     ckpt_dir = usr_args["ckpt_dir"]
+    save_data_flag = usr_args["save_data_flag"]
     save_dir = None
     video_save_dir = None
     video_size = None
@@ -82,6 +84,7 @@ def main(usr_args):
     args['task_name'] = task_name
     args["task_config"] = task_config
     args["ckpt_setting"] = ckpt_setting
+    args["save_data_flag"] = save_data_flag
 
     embodiment_type = args.get("embodiment")
     embodiment_config_path = os.path.join(CONFIGS_PATH, "_embodiment_config.yml")
@@ -124,6 +127,8 @@ def main(usr_args):
 
     save_dir = Path(f"eval_result/{task_name}/{policy_name}/{task_config}/{ckpt_setting}/{current_time}-{ckpt_dir.split('/')[-1]}")
     save_dir.mkdir(parents=True, exist_ok=True)
+
+    args["save_dir"] = save_dir
 
     if args["eval_video_log"]:
         video_save_dir = save_dir
@@ -291,17 +296,65 @@ def eval_policy(task_name,
             )
             TASK_ENV._set_eval_video_ffmpeg(ffmpeg)
 
+
+        # === 初始化当前 Episode 的总数据容器 ===
+        episode_data_storage = {
+            "qpos": [],
+            "action": [],
+            "cam_high": [],
+            "cam_left_wrist": [],
+            "cam_right_wrist": []
+        }
+        
         succ = False
         reset_func(model)
         while TASK_ENV.take_action_cnt < TASK_ENV.step_lim:
             observation = TASK_ENV.get_obs()
-            eval_func(TASK_ENV, model, observation)
+            # eval_func(TASK_ENV, model, observation)
+            observation_back, collected_steps = eval_func(TASK_ENV, model, observation)
+            
+            # === 将这一 chunk 的数据加入总容器 ===
+            for step in collected_steps:
+                episode_data_storage["qpos"].append(step["qpos"])
+                episode_data_storage["action"].append(step["action"])
+                episode_data_storage["cam_high"].append(step["cam_high"])
+                episode_data_storage["cam_left_wrist"].append(step["cam_left_wrist"])
+                episode_data_storage["cam_right_wrist"].append(step["cam_right_wrist"])
+            
             if TASK_ENV.eval_success:
                 succ = True
                 break
         # task_total_reward += TASK_ENV.episode_score
         if TASK_ENV.eval_video_path is not None:
             TASK_ENV._del_eval_video_ffmpeg()
+
+        if args["save_data_flag"]: # 可以加个 flag 控制
+            os.makedirs(os.path.join(args["save_dir"], "save_data"), exist_ok=True)
+            h5_path = os.path.join(args["save_dir"], "save_data", f"episode_{now_id}_succ_{succ}.hdf5")
+            print(f"Saving HDF5 to {h5_path}...")
+            
+            # 转换为 numpy array
+            total_steps = len(episode_data_storage["action"])
+            
+            with h5py.File(h5_path, 'w') as f:
+                # 1. Action Dataset
+                f.create_dataset('action', data=np.array(episode_data_storage["action"], dtype=np.float32))
+                
+                # 2. Observations Group
+                obs_grp = f.create_group('observations')
+                
+                # Qpos
+                obs_grp.create_dataset('qpos', data=np.array(episode_data_storage["qpos"], dtype=np.float32))
+                
+                # Images Group
+                img_grp = obs_grp.create_group('images')
+                img_grp.create_dataset('cam_high', data=np.array(episode_data_storage["cam_high"], dtype=np.uint8))
+                img_grp.create_dataset('cam_left_wrist', data=np.array(episode_data_storage["cam_left_wrist"], dtype=np.uint8))
+                img_grp.create_dataset('cam_right_wrist', data=np.array(episode_data_storage["cam_right_wrist"], dtype=np.uint8))
+                
+                # 可以在 HDF5 属性里记录是否成功
+                f.attrs['success'] = succ
+                f.attrs['total_frames'] = total_steps
 
         if succ:
             TASK_ENV.suc += 1

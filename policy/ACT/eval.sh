@@ -25,4 +25,5 @@ python script/eval_policy.py --config policy/$policy_name/deploy_policy.yml \
     --ckpt_setting ${ckpt_setting} \
     --ckpt_dir policy/ACT/act_ckpt/act-${task_name}/${ckpt_setting}-${expert_data_num}-${epoch} \
     --seed ${seed} \
-    --temporal_agg true
+    --temporal_agg True \
+    --save_data_flag True

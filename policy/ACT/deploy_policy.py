@@ -27,20 +27,48 @@ def encode_obs(observation):
         "qpos": qpos,
     }
 
+
+# 新增辅助函数：处理单帧数据，使其符合数据集格式 (HWC, uint8)
+def process_frame_for_saving(observation):
+    # 提取 qpos (14,)
+    qpos = (observation["joint_action"]["left_arm"] + [observation["joint_action"]["left_gripper"]] +
+            observation["joint_action"]["right_arm"] + [observation["joint_action"]["right_gripper"]])
+    
+    # 提取图像，Resize 到 640x480，保持 uint8 (0-255)
+    # 注意：这里直接操作 Raw observation，不需要归一化
+    def process_img(img):
+        img_resized = cv2.resize(img, (640, 480), interpolation=cv2.INTER_LINEAR)
+        return img_resized.astype(np.uint8) # 确保是 uint8
+
+    return {
+        "qpos": np.array(qpos, dtype=np.float32),
+        "cam_high": process_img(observation["observation"]["head_camera"]["rgb"]),
+        "cam_left_wrist": process_img(observation["observation"]["left_camera"]["rgb"]),
+        "cam_right_wrist": process_img(observation["observation"]["right_camera"]["rgb"])
+    }
+
+
 def get_model(usr_args):
     return ACT(usr_args, Namespace(**usr_args))
 
 
 def eval(TASK_ENV, model, observation):
     obs = encode_obs(observation)
-    # instruction = TASK_ENV.get_instruction()
+    # instruction = TASK_ENV.get_instruction()  
 
     # Get action from model
     actions = model.get_action(obs)
+    
+    # save 
+    collected_steps = []
+    step_data = process_frame_for_saving(observation)
+    step_data['action'] = actions[0] # action 已经是 (14,) 的 numpy array 或 tensor
+    collected_steps.append(step_data)
+    
     for action in actions:
         TASK_ENV.take_action(action)
         observation = TASK_ENV.get_obs()
-    return observation
+    return observation, collected_steps
 
 
 def reset_model(model):
